@@ -1,0 +1,12 @@
+{
+  "ID": "6f1c1f0e-5b7a-4c52-9a0e-0c3b5d7e2a11",
+  "ActionKeyword": "ide",
+  "Name": "Recent IDE Projects",
+  "Description": "Recent VS Code and Zed projects (local, WSL, SSH) with starring.",
+  "Author": "ACR1209",
+  "Version": "1.0.0",
+  "Language": "python",
+  "Website": "https://github.com/ACR1209/Flow.Launcher.Plugin.RecentIdeProjects",
+  "IcoPath": "Images/folder.png",
+  "ExecuteFileName": "main.py"
+}

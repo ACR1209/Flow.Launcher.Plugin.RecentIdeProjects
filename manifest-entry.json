@@ -1,0 +1,12 @@
+{
+  "ID": "6f1c1f0e-5b7a-4c52-9a0e-0c3b5d7e2a11",
+  "Name": "Recent IDE Projects",
+  "Description": "Recent VS Code and Zed projects (local, WSL, SSH) with starring.",
+  "Author": "ACR1209",
+  "Version": "1.0.0",
+  "Language": "python",
+  "Website": "https://github.com/ACR1209/Flow.Launcher.Plugin.RecentIdeProjects",
+  "UrlDownload": "https://github.com/ACR1209/Flow.Launcher.Plugin.RecentIdeProjects/releases/download/v1.0.0/RecentIdeProjects-1.0.0.zip",
+  "UrlSourceCode": "https://github.com/ACR1209/Flow.Launcher.Plugin.RecentIdeProjects",
+  "IcoPath": "https://raw.githubusercontent.com/ACR1209/Flow.Launcher.Plugin.RecentIdeProjects/main/Images/folder.png"
+}
