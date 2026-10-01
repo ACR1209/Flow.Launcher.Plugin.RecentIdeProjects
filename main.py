@@ -104,19 +104,22 @@ def load_stars():
 def toggle_star(key):
     s = load_stars()
     s ^= {key}
+    now = key in s
     os.makedirs(os.path.dirname(STARS), exist_ok=True)
     with open(STARS, "w", encoding="utf-8") as f:
         json.dump(sorted(s), f)
+    return now
 
 
 def merged():
-    """Starred first; the rest interleaved by per-IDE recency rank (VS Code has no timestamps)."""
+    """Starred first (alphabetical); the rest interleaved by per-IDE recency rank (VS Code has no timestamps)."""
     stars = load_stars()
     lists = [vscode_projects(), zed_projects()]
     items = [p for _, p in sorted(((i, p) for L in lists for i, p in enumerate(L)), key=lambda t: t[0])]
     for p in items:
         p["starred"] = p["key"] in stars
-    return sorted(items, key=lambda p: not p["starred"])  # stable
+    starred = sorted((p for p in items if p["starred"]), key=lambda p: (p["name"].lower(), p["ide"]))
+    return starred + [p for p in items if not p["starred"]]
 
 
 def query(q):
@@ -143,7 +146,7 @@ def context_menu(data):
         "Title": "Unstar" if starred else "Star",
         "SubTitle": key.split("|", 1)[1],
         "IcoPath": ICON[key.split("|")[0]],
-        "JsonRPCAction": {"method": "star", "parameters": [key, q], "dontHideAfterAction": True},
+        "JsonRPCAction": {"method": "star", "parameters": [key, q]},
     }]
 
 
@@ -155,11 +158,12 @@ def main():
     elif m == "context_menu":
         print(json.dumps({"result": context_menu(a[0])}))
     elif m == "star":
-        toggle_star(a[0])
-        print(json.dumps({"method": "Flow.Launcher.ChangeQuery", "parameters": ["ide " + a[1], True]}))
+        now = toggle_star(a[0])
+        print(json.dumps({"method": "Flow.Launcher.ShowMsg", "parameters": ["Starred" if now else "Unstarred", a[0].split("|", 1)[1], ""]}))
     elif m == "open":
         flags = 0x08000000 | 0x00000200 if os.name == "nt" else 0  # NO_WINDOW | NEW_GROUP
         subprocess.Popen(a[0], creationflags=flags, close_fds=True)
+        print("{}")
 
 
 if __name__ == "__main__":
