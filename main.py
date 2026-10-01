@@ -88,6 +88,8 @@ def zed_projects():
                 continue  # ponytail: docker/other Zed remotes unsupported, add when needed
             else:
                 cmd, where = [ZED_EXE, path], ""
+            if any(o["cmd"] == cmd for o in out):
+                continue  # same project can appear in several Zed workspace rows
             out.append(dict(key="zed|" + " ".join(cmd[1:]), ide="zed", name=os.path.basename(path.rstrip("/\\")) or path,
                             path=path, where=where, cmd=cmd))
     return out
@@ -134,7 +136,8 @@ def query(q):
                 "Title": ("★ " if p["starred"] else "") + p["name"],
                 "SubTitle": "%s%s — %s" % (tag, " [%s]" % p["where"] if p["where"] else "", p["path"]),
                 "IcoPath": ICON[p["ide"]],
-                "Score": 100000 - rank,  # Flow sorts by Score; without it the list order is not kept
+                "Score": 10_000_000 - rank,  # Flow sorts by Score (plus a per-title "times opened" boost, disabled below)
+                "AddSelectedCount": False,
                 "ContextData": [p["key"], p["starred"], raw[0]],
                 "JsonRPCAction": {"method": "open", "parameters": [p["cmd"]]},
             })
