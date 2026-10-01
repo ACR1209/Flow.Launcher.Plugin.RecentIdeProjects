@@ -10,8 +10,9 @@ from urllib.parse import unquote, urlparse
 
 HOME = os.environ.get("USERPROFILE") or os.path.expanduser("~")
 LOCAL = os.environ.get("LOCALAPPDATA") or os.path.join(HOME, "AppData", "Local")
-STARS = os.path.join(os.environ.get("APPDATA") or HOME, "FlowLauncher", "Settings", "Plugins",
-                     "RecentIdeProjects.stars.json")
+_SETTINGS = os.path.join(os.environ.get("APPDATA") or HOME, "FlowLauncher", "Settings", "Plugins")
+STARS = os.path.join(_SETTINGS, "RecentIdeProjects.stars.json")
+HIDDEN = os.path.join(_SETTINGS, "RecentIdeProjects.hidden.json")
 VSCODE_DBS = [  # (tag, exe, db) -- new shared location first, then legacy
     ("Code", os.path.join(LOCAL, "Programs", "Microsoft VS Code", "Code.exe"),
      [os.path.join(HOME, ".vscode-shared", "sharedStorage", "state.vscdb"),
@@ -95,40 +96,45 @@ def zed_projects():
     return out
 
 
-def load_stars():
+def load(path):
     try:
-        with open(STARS, encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             return set(json.load(f))
     except (OSError, ValueError):
         return set()
 
 
-def toggle_star(key):
-    s = load_stars()
+def toggle(path, key):
+    s = load(path)
     s ^= {key}
-    now = key in s
-    os.makedirs(os.path.dirname(STARS), exist_ok=True)
-    with open(STARS, "w", encoding="utf-8") as f:
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
         json.dump(sorted(s), f)
-    return now
 
 
 def merged():
     """Starred first (alphabetical); the rest interleaved by per-IDE recency rank (VS Code has no timestamps)."""
-    stars = load_stars()
+    stars = load(STARS)
     lists = [vscode_projects(), zed_projects()]
     items = [p for _, p in sorted(((i, p) for L in lists for i, p in enumerate(L)), key=lambda t: t[0])]
+    hidden = load(HIDDEN)
     for p in items:
         p["starred"] = p["key"] in stars
+        p["hidden"] = p["key"] in hidden
     starred = sorted((p for p in items if p["starred"]), key=lambda p: (p["name"].lower(), p["ide"]))
     return starred + [p for p in items if not p["starred"]]
 
 
 def query(q):
-    raw = [q]
+    """`hidden [words]` lists only the hidden projects; otherwise hidden ones are left out."""
+    raw = q
     q = q.lower().split()
+    show_hidden = q[:1] == ["hidden"]
+    q = q[show_hidden:]
     res = []
     for rank, p in enumerate(merged()):
+        if p["hidden"] != show_hidden:
+            continue
         hay = (p["name"] + " " + p["path"] + " " + p["where"] + " " + p["ide"]).lower()
         if all(t in hay for t in q):
             tag = "VS Code" if p["ide"] == "vscode" else "Zed"
@@ -138,20 +144,21 @@ def query(q):
                 "IcoPath": ICON[p["ide"]],
                 "Score": 10_000_000 - rank,  # Flow sorts by Score (plus a per-title "times opened" boost, disabled below)
                 "AddSelectedCount": False,
-                "ContextData": [p["key"], p["starred"], raw[0]],
+                "ContextData": [p["key"], p["starred"], p["hidden"]],
                 "JsonRPCAction": {"method": "open", "parameters": [p["cmd"]]},
             })
     return res
 
 
 def context_menu(data):
-    key, starred, q = data
-    return [{
-        "Title": "Unstar" if starred else "Star",
-        "SubTitle": key.split("|", 1)[1],
-        "IcoPath": ICON[key.split("|")[0]],
-        "JsonRPCAction": {"method": "star", "parameters": [key, q], "dontHideAfterAction": True},
-    }]
+    key, starred, hidden = data
+    sub, icon = key.split("|", 1)[1], ICON[key.split("|")[0]]
+
+    def item(title, kind):
+        return {"Title": title, "SubTitle": sub, "IcoPath": icon,
+                "JsonRPCAction": {"method": "toggle", "parameters": [kind, key], "dontHideAfterAction": True}}
+    return [item("Unstar" if starred else "Star", "star"),
+            item("Unhide" if hidden else "Hide", "hidden")]
 
 
 def main():
@@ -161,8 +168,8 @@ def main():
         print(json.dumps({"result": query(a[0] if a else "")}))
     elif m == "context_menu":
         print(json.dumps({"result": context_menu(a[0])}))
-    elif m == "star":
-        toggle_star(a[0])
+    elif m == "toggle":
+        toggle(STARS if a[0] == "star" else HIDDEN, a[1])
         print(json.dumps({"method": "Flow.Launcher.ReQuery", "parameters": [True]}))
     elif m == "open":
         flags = 0x08000000 | 0x00000200 if os.name == "nt" else 0  # NO_WINDOW | NEW_GROUP
