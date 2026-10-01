@@ -17,7 +17,7 @@ VSCODE_DBS = [  # (tag, exe, db) -- new shared location first, then legacy
      [os.path.join(HOME, ".vscode-shared", "sharedStorage", "state.vscdb"),
       os.path.join(os.environ.get("APPDATA", ""), "Code", "User", "globalStorage", "state.vscdb")]),
 ]
-ZED_EXE = os.path.join(LOCAL, "Programs", "Zed", "Zed.exe")
+ZED_EXE = os.path.join(LOCAL, "Programs", "Zed", "bin", "Zed.exe")  # CLI; hands off to the running Zed
 ZED_DB_GLOB = os.path.join(LOCAL, "Zed", "db")
 ICON = {"vscode": "Images/code-light.png", "zed": "Images/folder.png"}
 
@@ -80,16 +80,16 @@ def zed_projects():
         for paths, kind, host, port, user, distro in rows:
             path = paths.split("\n")[0]
             if kind == "wsl":
-                url, where = "wsl://%s%s%s" % (user + "@" if user else "", distro, path), "WSL: " + distro
+                cmd, where = [ZED_EXE, "--wsl", (user + "@" if user else "") + distro, path], "WSL: " + distro
             elif kind == "ssh":
-                url = "ssh://%s%s%s%s" % (user + "@" if user else "", host, ":%s" % port if port else "", path)
+                cmd = [ZED_EXE, "ssh://%s%s%s%s" % (user + "@" if user else "", host, ":%s" % port if port else "", path)]
                 where = "SSH: " + host
             elif kind:
                 continue  # ponytail: docker/other Zed remotes unsupported, add when needed
             else:
-                url, where = path, ""
-            out.append(dict(key="zed|" + url, ide="zed", name=os.path.basename(path.rstrip("/\\")) or path,
-                            path=path, where=where, cmd=[ZED_EXE, url]))
+                cmd, where = [ZED_EXE, path], ""
+            out.append(dict(key="zed|" + " ".join(cmd[1:]), ide="zed", name=os.path.basename(path.rstrip("/\\")) or path,
+                            path=path, where=where, cmd=cmd))
     return out
 
 
@@ -120,6 +120,7 @@ def merged():
 
 
 def query(q):
+    raw = [q]
     q = q.lower().split()
     res = []
     for p in merged():
@@ -130,19 +131,19 @@ def query(q):
                 "Title": ("★ " if p["starred"] else "") + p["name"],
                 "SubTitle": "%s%s — %s" % (tag, " [%s]" % p["where"] if p["where"] else "", p["path"]),
                 "IcoPath": ICON[p["ide"]],
-                "ContextData": [p["key"], p["starred"]],
+                "ContextData": [p["key"], p["starred"], raw[0]],
                 "JsonRPCAction": {"method": "open", "parameters": [p["cmd"]]},
             })
     return res
 
 
 def context_menu(data):
-    key, starred = data
+    key, starred, q = data
     return [{
         "Title": "Unstar" if starred else "Star",
         "SubTitle": key.split("|", 1)[1],
         "IcoPath": ICON[key.split("|")[0]],
-        "JsonRPCAction": {"method": "star", "parameters": [key], "dontHideAfterAction": True},
+        "JsonRPCAction": {"method": "star", "parameters": [key, q], "dontHideAfterAction": True},
     }]
 
 
@@ -155,9 +156,9 @@ def main():
         print(json.dumps({"result": context_menu(a[0])}))
     elif m == "star":
         toggle_star(a[0])
-        print(json.dumps({"method": "Flow.Launcher.ReQuery", "parameters": []}))
+        print(json.dumps({"method": "Flow.Launcher.ChangeQuery", "parameters": ["ide " + a[1], True]}))
     elif m == "open":
-        flags = 0x00000008 | 0x00000200 if os.name == "nt" else 0  # DETACHED | NEW_GROUP
+        flags = 0x08000000 | 0x00000200 if os.name == "nt" else 0  # NO_WINDOW | NEW_GROUP
         subprocess.Popen(a[0], creationflags=flags, close_fds=True)
 
 
