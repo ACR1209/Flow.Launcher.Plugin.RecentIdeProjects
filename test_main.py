@@ -13,3 +13,4 @@ assert r[0]["Title"] == "★ c" and main.context_menu(r[0]["ContextData"])[0]["T
 assert [x["Title"] for x in main.query("wsl")] == ["b"]
 main.toggle_star("zed|c"); assert not main.load_stars()
 print("ok")
+assert [r["Score"] for r in main.query("")] == sorted((r["Score"] for r in main.query("")), reverse=True)

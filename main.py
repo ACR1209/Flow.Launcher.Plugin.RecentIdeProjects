@@ -126,7 +126,7 @@ def query(q):
     raw = [q]
     q = q.lower().split()
     res = []
-    for p in merged():
+    for rank, p in enumerate(merged()):
         hay = (p["name"] + " " + p["path"] + " " + p["where"] + " " + p["ide"]).lower()
         if all(t in hay for t in q):
             tag = "VS Code" if p["ide"] == "vscode" else "Zed"
@@ -134,6 +134,7 @@ def query(q):
                 "Title": ("★ " if p["starred"] else "") + p["name"],
                 "SubTitle": "%s%s — %s" % (tag, " [%s]" % p["where"] if p["where"] else "", p["path"]),
                 "IcoPath": ICON[p["ide"]],
+                "Score": 100000 - rank,  # Flow sorts by Score; without it the list order is not kept
                 "ContextData": [p["key"], p["starred"], raw[0]],
                 "JsonRPCAction": {"method": "open", "parameters": [p["cmd"]]},
             })
@@ -146,7 +147,7 @@ def context_menu(data):
         "Title": "Unstar" if starred else "Star",
         "SubTitle": key.split("|", 1)[1],
         "IcoPath": ICON[key.split("|")[0]],
-        "JsonRPCAction": {"method": "star", "parameters": [key, q]},
+        "JsonRPCAction": {"method": "star", "parameters": [key, q], "dontHideAfterAction": True},
     }]
 
 
@@ -158,8 +159,8 @@ def main():
     elif m == "context_menu":
         print(json.dumps({"result": context_menu(a[0])}))
     elif m == "star":
-        now = toggle_star(a[0])
-        print(json.dumps({"method": "Flow.Launcher.ShowMsg", "parameters": ["Starred" if now else "Unstarred", a[0].split("|", 1)[1], ""]}))
+        toggle_star(a[0])
+        print(json.dumps({"method": "Flow.Launcher.ReQuery", "parameters": [True]}))
     elif m == "open":
         flags = 0x08000000 | 0x00000200 if os.name == "nt" else 0  # NO_WINDOW | NEW_GROUP
         subprocess.Popen(a[0], creationflags=flags, close_fds=True)

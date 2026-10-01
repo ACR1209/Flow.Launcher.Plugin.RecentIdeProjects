@@ -4,7 +4,7 @@
   "Name": "Recent IDE Projects",
   "Description": "Recent VS Code and Zed projects (local, WSL, SSH) with starring.",
   "Author": "ACR1209",
-  "Version": "1.0.5",
+  "Version": "1.0.6",
   "Language": "python",
   "Website": "https://github.com/ACR1209/Flow.Launcher.Plugin.RecentIdeProjects",
   "IcoPath": "Images/code.png",
