@@ -19,7 +19,7 @@ VSCODE_DBS = [  # (tag, exe, db) -- new shared location first, then legacy
 ]
 ZED_EXE = os.path.join(LOCAL, "Programs", "Zed", "bin", "Zed.exe")  # CLI; hands off to the running Zed
 ZED_DB_GLOB = os.path.join(LOCAL, "Zed", "db")
-ICON = {"vscode": "Images/code-light.png", "zed": "Images/zed.png"}
+ICON = {"vscode": "Images/vsCode.png", "zed": "Images/zed.png"}
 
 
 def read_kv(db, sql, args=()):
